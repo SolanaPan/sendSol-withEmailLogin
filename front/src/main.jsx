@@ -8,9 +8,7 @@ import { WalletConnectProvider } from "./utils/WalletConnectProvider";
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
-      <WalletConnectProvider>
         <App />
-      </WalletConnectProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

@@ -2,56 +2,77 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { walletAddress } from "../constants";
 import "../styles/mix.css";
-// import { PhantomWalletAdapter, SolflareWalletAdapter, TorusWalletAdapter } from '@solana/wallet-adapter-wallets'
-import Header from "./Header";
-import { toast } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { getSolPriceInEuro, getSolAmountFromWallet, sendSolana } from "../utils/utils"
+import { getSolPriceInEuro, getSolAmountFromWallet, sendSolana } from "../utils/utils";
+import PHWallet from "./wallet";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const wallet = useWallet();
-  const { connection } = useConnection();
-
   const [euroAmount, setEuroAmount] = useState(0);
   const [myAddress, setMyAddress] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const userInfo = JSON.parse(localStorage.getItem("userInfo") || "{}");
   const { email, affiliateLink } = userInfo;
 
-  const logOut = () => {
+  const {wallet, publicKey} = useWallet();
+  const { connection } = useConnection();
+
+  const handleLogOut = () => {
     localStorage.removeItem("userInfo");
     navigate("/");
   };
 
-  const sendSol = () => {
-    const solPrice = getSolPriceInEuro(connection, wallet);
-    if (solPrice > 0) {
-      console.log("solprice--", solPrice);
-    }
-    const sendSolAmount = euroAmount / solPrice;
+  const handleSubmit = async () => {
+    try {
+      if (!publicKey || !publicKey == null) {
+        console.log(wallet.adapter.publicKey);
+        toast.error("Please connect your wallet");
+        return;
+      }
 
-    const solBalance = getSolAmountFromWallet();
-    if (solBalance < sendSolAmount) {
-      toast.error("There is no enough solana");
-      return;
-    }
+      if (euroAmount == 0) {
+        toast.error("Please input Euro amount");
+        return;
+      }
+      setLoading(true);
+      const solPrice = await getSolPriceInEuro();
+      console.log('--solPrice--', solPrice)
+      if (solPrice == 0) {
+        toast.error("Get solana price failed")
+        return;
+      }
 
-    const success = sendSolana(affiliateLink, sendSolAmount);
-    if (success) {
-      toast.success("Send solana success");
-    } else {
-      toast.error("Send solana failed");
+      const sendSolAmount = euroAmount / solPrice;
+
+      const solBalance = await getSolAmountFromWallet(connection, publicKey);
+      console.log('--solbalance--', solBalance, sendSolAmount);
+      if (solBalance < sendSolAmount) {
+        toast.error("There is no enough solana");
+        return;
+      }
+
+      const success = await sendSolana(connection, wallet, affiliateLink, sendSolAmount);
+      if (success) {
+        toast.success("Send solana success");
+      } else {
+        toast.error("Send solana failed");
+      }
+    } catch (e) {
+      console.log(e);
+      toast.error("Error occurred while sending solana");
+    } finally {
+      setLoading(false);
     }
   };
 
-
   return (
     <>
-      <Header />
+      <PHWallet />
       <section style={{ fontFamily: "cursive", fontSize: "20px" }}>
         <div className="form_data">
-          <form>
+          <div>
             <div>
               <h1>Dashboard</h1>
             </div>
@@ -81,7 +102,7 @@ const Dashboard = () => {
                 type="number"
                 name="euro_amount"
                 id="euro_amount"
-                onChange={(e) => setEuroAmount(e.target.value)}
+                onChange={(e) => setEuroAmount(Number(e.target.value))}
                 value={euroAmount}
                 placeholder="Enter Euro Amount"
               />
@@ -97,10 +118,41 @@ const Dashboard = () => {
                 placeholder="Enter your wallet address"
               />
             </div>
-            <button onClick={sendSol}>Send</button>
-            <button onClick={logOut}>logOut</button>
-          </form>
+            <button
+              className="btn"
+              onClick={handleSubmit}
+              style={{
+                width: "430px",
+                backgroundColor: "green",
+                height: "50px",
+                borderRadius: "20px",
+                color: "white",
+                fontSize: "20px",
+                fontFamily: "cursive",
+              }}
+              disabled={loading} // Disable button when loading
+            >
+              {loading ? "Sending..." : "Send"}
+            </button>
+            <button
+              className="btn"
+              onClick={handleLogOut}
+              style={{
+                width: "430px",
+                backgroundColor: "green",
+                height: "50px",
+                borderRadius: "20px",
+                color: "white",
+                fontSize: "20px",
+                fontFamily: "cursive",
+              }}
+              disabled={loading} // Disable button when loading
+            >
+              Log out
+            </button>
+          </div>
         </div>
+        <ToastContainer autoClose={3000} draggableDirection="x" />
       </section>
     </>
     // </WalletConnectProvider>

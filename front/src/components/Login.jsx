@@ -5,6 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { baseURL } from "../constants";
 import "../styles/mix.css";
 import axios from "axios";
+import { validateEmail } from "../utils/utils";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -23,7 +24,7 @@ const Login = () => {
     try {
       if (email === "") {
         toast.error("Enter Your Email!");
-      } else if (!email.includes("@")) {
+      } else if (!validateEmail(email)) {
         toast.error("Enter a Valid Email!");
       } else {
         const config = {
